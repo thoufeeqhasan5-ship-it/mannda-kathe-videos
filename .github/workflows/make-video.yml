@@ -1,0 +1,65 @@
+name: Make Mannda Kathe video
+
+on:
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "Topic number (file in topics/, e.g. 01)"
+        required: true
+        default: "01"
+      speaker:
+        description: "AI voice (ignored if voice/<topic>.wav or .m4a exists)"
+        type: choice
+        options: [Suresh, Anu, Chetan, Vidya]
+        default: Suresh
+
+jobs:
+  video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+    steps:
+      - name: Check the Hugging Face token
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::error::The secret HF_TOKEN is missing. Add it in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          echo "HF_TOKEN is set."
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ffmpeg (fast static build)
+        uses: FedericoCarboni/setup-ffmpeg@v3
+
+      - name: Cache the voice model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-indic-parler-tts-v1
+
+      - name: Install Python tools
+        run: |
+          pip install -q "torch==2.5.1" "torchaudio==2.5.1" --index-url https://download.pytorch.org/whl/cpu
+          pip install -q "numpy<2" git+https://github.com/huggingface/parler-tts.git
+          pip install -q "sentencepiece==0.2.0"
+          pip install -q soundfile pillow requests playwright
+          python -m playwright install --with-deps chromium
+          python -c "import torch, torchaudio; print('torch', torch.__version__, 'torchaudio', torchaudio.__version__)"
+
+      - name: Make video
+        env:
+          SPEAKER: ${{ github.event.inputs.speaker }}
+        run: python scripts/make_video.py --topic "${{ github.event.inputs.topic }}"
+
+      - name: Download the video from here (kept 7 days)
+        uses: actions/upload-artifact@v4
+        with:
+          name: manndakathe-${{ github.event.inputs.topic }}-${{ github.event.inputs.speaker }}
+          path: out/
+          retention-days: 7
