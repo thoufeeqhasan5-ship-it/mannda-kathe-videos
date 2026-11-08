@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="kn">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: 'Baloo Tamma 2'; src: url('../assets/fonts/BalooTamma2.ttf'); font-weight: 400 800; }
+  @font-face { font-family: 'Archivo'; src: url('../assets/fonts/Archivo.ttf'); font-weight: 100 900; }
+  html, body { margin: 0; background: transparent; }
+  #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; color: #fff;
+           font-family: 'Baloo Tamma 2', sans-serif; }
+  #shade { position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(20,8,6,.70) 0%, rgba(20,8,6,0) 18%, rgba(20,8,6,0) 58%, rgba(20,8,6,.82) 100%); }
+  #main { position: absolute; inset: 0; }
+
+  #progress { position: absolute; left: 0; top: 0; height: 8px; width: 0; background: #8DBF4A; }
+
+  #brand { position: absolute; top: 70px; left: 56px; display: flex; align-items: center; gap: 14px;
+           padding: 10px 26px 10px 12px; border-radius: 999px; background: rgba(20,8,6,.72);
+           border: 2px solid rgba(233,161,91,.6); }
+  #brand img { width: 46px; height: 60px; }
+  #brand span { font-weight: 800; font-size: 34px; color: #F0B467; line-height: 1; padding-top: 6px; }
+
+  #card { position: absolute; left: 0; right: 0; top: 330px; display: flex; justify-content: center; }
+  #cardInner { padding: 18px 44px 10px; background: #F2D9AE; color: #1B110A; border-radius: 18px;
+               font-weight: 800; font-size: 88px; line-height: 1.15; text-align: center; max-width: 900px;
+               box-shadow: 0 12px 40px rgba(0,0,0,.45); border-bottom: 10px solid #C8582B; }
+
+  #cap { position: absolute; left: 70px; right: 70px; top: 1330px; text-align: center;
+         font-weight: 800; font-size: 72px; line-height: 1.25; color: #fff;
+         -webkit-text-stroke: 3px #140806; paint-order: stroke fill;
+         text-shadow: 0 4px 18px rgba(0,0,0,.85); }
+
+  #credit { position: absolute; left: 40px; right: 40px; bottom: 54px; text-align: center;
+            font-family: 'Archivo', sans-serif; font-size: 22px; color: rgba(255,255,255,.72);
+            text-shadow: 0 2px 6px rgba(0,0,0,.9); }
+
+  #end { position: absolute; inset: 0; background: #1B110A; display: flex; flex-direction: column;
+         align-items: center; justify-content: center; opacity: 0; }
+  #end img { width: 300px; height: 390px; }
+  #endName { margin-top: 30px; font-weight: 800; font-size: 104px; color: #F0B467; line-height: 1.1; }
+  #endSub { margin-top: 18px; font-weight: 600; font-size: 50px; color: #F6E9D2; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="shade"></div>
+  <div id="main">
+    <div id="progress"></div>
+    <div id="brand"><img src="../assets/logo-mark.svg" alt=""><span>ಮಣ್ಣ್‌ದ ಕತೆ</span></div>
+    <div id="card"><div id="cardInner"></div></div>
+    <div id="cap"></div>
+    <div id="credit"></div>
+  </div>
+  <div id="end">
+    <img src="../assets/logo-mark.svg" alt="">
+    <div id="endName">ಮಣ್ಣ್‌ದ ಕತೆ</div>
+    <div id="endSub">Follow ಮಲ್ಪುಲೆ · ಪ್ರತಿ ದಿನ ಪೊಸ ಕತೆ</div>
+  </div>
+</div>
+<script>
+let D;
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const q = x => Math.round(x * 20) / 20;
+function setup(d) { D = d; }
+function pick(list, t) { let r = null; for (const x of list) if (t >= x.start && t < x.end) r = x; return r; }
+
+function render(t) {
+  // progress bar over the story part
+  document.getElementById('progress').style.width = (clamp(t / D.endStart, 0, 1) * 1080).toFixed(0) + 'px';
+
+  // big fact card: punches in, holds, fades
+  const c = pick(D.cards, t);
+  const card = document.getElementById('card'), ci = document.getElementById('cardInner');
+  let cardKey = '-';
+  if (c) {
+    if (ci.textContent !== c.text) ci.textContent = c.text;
+    const a = (t - c.start);
+    const sc = a < 0.18 ? 0.6 + 0.5 * (a / 0.18) : (a < 0.3 ? 1.1 - 0.1 * ((a - 0.18) / 0.12) : 1);
+    const op = Math.min(clamp(a / 0.12, 0, 1), clamp((c.end - t) / 0.25, 0, 1));
+    card.style.transform = 'scale(' + q(sc) + ')'; card.style.opacity = q(op);
+    cardKey = c.text + q(sc) + q(op);
+  } else { card.style.opacity = 0; }
+
+  // captions
+  const k = pick(D.caps, t);
+  const cap = document.getElementById('cap');
+  const capText = k ? k.text : '';
+  if (cap.textContent !== capText) cap.textContent = capText;
+
+  // photo credit
+  const cr = pick(D.credits, t);
+  const crt = cr ? cr.text : '';
+  const crEl = document.getElementById('credit');
+  if (crEl.textContent !== crt) crEl.textContent = crt;
+
+  // end card
+  const e = clamp((t - D.endStart) / 0.4, 0, 1);
+  document.getElementById('end').style.opacity = q(e);
+  document.getElementById('main').style.opacity = q(1 - e);
+
+  return [Math.round(clamp(t / D.endStart, 0, 1) * 540), cardKey, capText, crt, q(e)].join('|');
+}
+</script>
+</body>
+</html>
